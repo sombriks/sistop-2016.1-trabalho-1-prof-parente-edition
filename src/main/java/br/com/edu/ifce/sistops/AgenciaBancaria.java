@@ -5,6 +5,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
@@ -13,6 +14,8 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 
 public class AgenciaBancaria extends JPanel {
 
@@ -21,6 +24,7 @@ public class AgenciaBancaria extends JPanel {
   private List<ProcessoCaixa>   caixasDesenho    = new ArrayList<>();
   private List<ProcessoCliente> clientes         = new ArrayList<>();
   private List<ProcessoCliente> clientesRemover  = new ArrayList<>();
+  private JTextArea             jta              = new JTextArea();
   private Semaphore             mutex            = new Semaphore(1);
   private Semaphore             mtCaixas;
   // cosmetic
@@ -51,7 +55,7 @@ public class AgenciaBancaria extends JPanel {
       ProcessoCaixa pc = new ProcessoCaixa(this, nome, x, y);
       pc.start();
       caixas.add(pc);
-      x += 120;
+      x += 160;
     }
     caixasDesenho.addAll(caixas);
     x = 50;
@@ -69,7 +73,7 @@ public class AgenciaBancaria extends JPanel {
           long tempo = (long) (3000 + Math.random() * 15000);
           ProcessoCliente pc = new ProcessoCliente(AgenciaBancaria.this, senha, tempo, x, y);
           clientes.add(pc);
-          x += 120;
+          x += 160;
           if (x > 600) {
             x = 50;
             y += 100;
@@ -84,10 +88,28 @@ public class AgenciaBancaria extends JPanel {
       }
     });
 
+    // logs
+    JFrame jf = new JFrame();
+    jf.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+    JScrollPane scroll = new JScrollPane(jta);
+    jf.add(scroll);
+    jf.setSize(800, 480);
+
+    JButton verLog = new JButton("Ver o Log de eventos");
+    add(verLog);
+    verLog.setBounds(140, 440, 230, 30);
+    verLog.addActionListener(new ActionListener() {
+
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        jf.setVisible(true);
+      }
+    });
+
     setSize(640, 480);
     setVisible(true);
   }
-  
+
   private int rnd(int max) {
     return (int) Math.floor(Math.random() * max);
   }
@@ -104,7 +126,6 @@ public class AgenciaBancaria extends JPanel {
     for (ProcessoCliente pc : clientes) {
       pc.paint(g2);
     }
-//    System.out.println("paint");
   }
 
   @Override
@@ -120,12 +141,12 @@ public class AgenciaBancaria extends JPanel {
     return cx;
   }
 
-  public void encerraAtendimento(ProcessoCaixa cx, ProcessoCliente cli) {
+  public void encerraAtendimento(ProcessoCaixa cx, ProcessoCliente cli) throws Exception {
     clientesRemover.add(cli);
     caixas.add(cx);
     mtCaixas.release();
-    System.out.println("Caixas livres na agência: " + caixas.size());
-    System.out.println("Clientes na fila: "+clientes.size());
+    log("Caixas livres na agência: " + caixas.size());
+    log("Clientes ainda na agência: " + (clientes.size() - 1));
   }
 
   public static void main(String[] args) throws Exception {
@@ -135,6 +156,16 @@ public class AgenciaBancaria extends JPanel {
     jf.pack();
     jf.setResizable(false);
     jf.setVisible(true);
+  }
+
+  public void log(String line) throws Exception {
+    line = "[" + new Timestamp(System.currentTimeMillis()).toString() + "]" + line;
+    jta.append(line + "\r\n");
+    if (jta.getRows() > 1000) {
+      int end = jta.getLineEndOffset(0);
+      jta.replaceRange("", 0, end);
+    }
+
   }
 
 }
