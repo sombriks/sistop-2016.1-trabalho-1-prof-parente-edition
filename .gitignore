@@ -5,3 +5,5 @@ output/
 .classpath
 .project
 build/
+target
+.idea
